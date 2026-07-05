@@ -1,0 +1,96 @@
+import fitz  # PyMuPDF
+import re
+
+def to_markdown_table(table_data):
+    """추출된 리스트 데이터를 마크다운 표 형식으로 변환"""
+    if not table_data:
+        return ""
+    
+    md_output = "\n"
+    for i, row in enumerate(table_data):
+        clean_row = [str(cell).replace('\n', ' ').strip() if cell else "" for cell in row]
+        md_output += "| " + " | ".join(clean_row) + " |\n"
+        if i == 0:  # 헤더 구분선
+            md_output += "| " + " | ".join(["---"] * len(row)) + " |\n"
+    return md_output + "\n"
+
+def extract_all_content(pdf_path):
+    doc = fitz.open(pdf_path)
+    final_output = []
+
+    for page in doc:
+        # 1. 해당 페이지의 모든 표 찾기
+        tables = page.find_tables()
+        table_bboxes = [t.bbox for t in tables]
+        
+        # 2. 텍스트 블록 가져오기 (x0, y0, x1, y1, "text", block_no, block_type)
+        blocks = page.get_text("blocks")
+        # Y좌표(상하) -> X좌표(좌우) 순으로 정렬
+        blocks.sort(key=lambda b: (b[1], b[0]))
+
+        processed_table_indices = set()
+
+        for b in blocks:
+            block_rect = fitz.Rect(b[:4])
+            is_inside_any_table = False
+            
+            for i, tab_bbox in enumerate(table_bboxes):
+                # 텍스트 블록이 표 영역과 겹치는지 확인
+                if block_rect.intersects(tab_bbox):
+                    is_inside_any_table = True
+                    # 해당 표를 아직 처리하지 않았다면 마크다운으로 변환하여 추가
+                    if i not in processed_table_indices:
+                        md_tab = to_markdown_table(tables[i].extract())
+                        final_output.append(md_tab)
+                        processed_table_indices.add(i)
+                    break
+            
+            # 표 영역 밖의 일반 텍스트만 처리
+            if not is_inside_any_table:
+                text = b[4].strip()
+                if text:
+                    # Dify 청킹용 '제n조' 헤더 처리
+                    text = re.sub(r"(제\s?\d+\s?조\(.*?\))", r"\n\n# \1", text)
+                    final_output.append(text)
+
+    return "\n\n".join(final_output)
+
+# 실행 및 저장
+result_text = extract_all_content("2.약관_신한 SOL 처음해외여행보험(20260316).pdf")
+with open("integrated_knowledge.md", "w", encoding="utf-8") as f:
+    f.write(result_text)
+    
+    
+"""   
+[0]: 글자 덩어리의 왼쪽 X 좌표
+
+[1]: 위쪽 Y 좌표
+
+[2]: 오른쪽 X 좌표
+
+[3]: 아래쪽 Y 좌표
+
+[4]: 진짜 들어있는 글자 (텍스트 내용)
+
+[5], [6] 등: 기타 정보 (몇 번째 블록인지 등)
+
+1. fitz.Rect(b[:4]) : 글자가 차지한 '네모 상자' 그리기
+b[:4]의 의미: 파이썬에서 [:4]는 "0번째부터 시작해서 4개(0, 1, 2, 3)의 데이터를 가져와라"라는 뜻입니다. 
+즉, 위의 꾸러미에서 글자의 위치를 나타내는 4개의 좌표(왼쪽, 위, 오른쪽, 아래)만 쏙 빼오는 명령어입니다.
+
+fitz.Rect(...)의 의미: 가져온 4개의 점(좌표)을 연결해서 가상의 '네모 상자(Rectangle)'를 짠! 하고 만드는 기능입니다.
+
+왜 이렇게 하나요? 
+이 글자가 문서 안에서 정확히 어디서부터 어디까지 자리를 차지하고 있는지 구역을 설정하기 위해서입니다. 
+이렇게 네모 상자를 만들어 둬야, 나중에 컴퓨터가 "어? 이 글자의 네모 상자가 표의 네모 상자랑 겹치네? 
+그럼 이건 표 안에 속한 글자구나!" 하고 알아낼 수 있거든요.
+
+2. b[4].strip() : 진짜 글자만 꺼내서 깔끔하게 청소하기
+b[4]의 의미: 아까 꾸러미 순서표에서 4번 방(0부터 셌으니 실제로는 5번째 데이터)에 무엇이 있었죠? 바로 '실제 텍스트 내용'입니다. 
+좌표 정보 같은 건 버리고, 오직 우리가 읽을 수 있는 진짜 글자만 콕 집어서 꺼내오는 겁니다.
+
+.strip()의 의미: 꺼내온 글자 양끝에 묻어있는 쓸데없는 띄어쓰기 여백이나 눈에 보이지 않는 줄바꿈(엔터) 자국을 깨끗하게 닦아내는(청소하는) 파이썬의 기본 청소기입니다.
+
+왜 이렇게 하나요? PDF 문서에서 글자를 기계적으로 뽑아내면 앞뒤로 지저분한 공백이 껴있는 경우가 많습니다. 
+이걸 그대로 두면 마크다운으로 변환했을 때 삐뚤빼뚤 안 예쁘기 때문에, 양끝 여백을 잘라내어 텍스트를 단정하게 만드는 것입니다.
+"""

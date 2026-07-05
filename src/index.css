@@ -1,0 +1,37 @@
+@import "tailwindcss";
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css");
+
+@theme {
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  --color-toss-blue: #3182F6;
+  --color-toss-bg: #FAFAFA;
+}
+
+@layer base {
+  body {
+    @apply antialiased text-gray-900;
+  }
+
+  textarea::placeholder, 
+  input::placeholder {
+    color: #9ca3af !important; /* gray-400 */
+    font-weight: 300 !important;
+    opacity: 1 !important;
+  }
+
+  /* 전역 스크롤바 디자인 최적화 (미니멀 & 현대적) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+  }
+}

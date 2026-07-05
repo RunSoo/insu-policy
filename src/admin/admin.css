@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@theme {
+  --color-toss-bg: #F2F4F6;
+  --color-toss-blue: #3182F6;
+}
+
+body {
+  background-color: var(--color-toss-bg);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+}
