@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
+      outDir: 'build',
       rollupOptions: {
         input: {
           main: resolve(process.cwd(), 'index.html'),
