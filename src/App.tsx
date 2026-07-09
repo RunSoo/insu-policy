@@ -7,6 +7,7 @@ import { Sidebar } from './components/Sidebar';
 import type { AnalysisResultData } from './components/AnalysisResult';
 import { smoothScrollToBottom } from './utils/scroll';
 import { ProductSelection } from './components/ProductSelection';
+import { Home } from './components/Home';
 
 export interface FlowItem {
   id: number;
@@ -18,9 +19,22 @@ export interface FlowItem {
 const STORAGE_KEY_V2 = 'toss_insurance_flows_v2';
 const STORAGE_KEY_V1 = 'toss_insurance_flow_v1';
 const PRODUCT_STORAGE_KEY = 'toss_insurance_product_v1';
+const AGENT_STORAGE_KEY = 'toss_insurance_agent_v1';
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
 function App() {
+  const [selectedAgent, setSelectedAgent] = useState<'claims' | 'cancellation' | null>(() => {
+    return (localStorage.getItem(AGENT_STORAGE_KEY) as any) || null;
+  });
+
+  useEffect(() => {
+    if (selectedAgent) {
+      localStorage.setItem(AGENT_STORAGE_KEY, selectedAgent);
+    } else {
+      localStorage.removeItem(AGENT_STORAGE_KEY);
+    }
+  }, [selectedAgent]);
+
   const [selectedProduct, setSelectedProduct] = useState<string | null>(() => {
     return localStorage.getItem(PRODUCT_STORAGE_KEY);
   });
@@ -87,7 +101,7 @@ function App() {
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(flows));
   }, [flows]);
 
-  const currentFlow = selectedProduct ? (flows[selectedProduct] || [{ id: Date.now(), requestData: null }]) : [];
+  const currentFlow = selectedProduct ? (flows[selectedProduct] || [{ id: 1, requestData: null }]) : [];
 
   // 상품 선택 후 메인 화면 진입 시 기존 질문 내역이 있다면 새 질문 폼 위치로 부드럽게 스크롤
   useEffect(() => {
@@ -102,8 +116,18 @@ function App() {
   const handleSubmit = (id: number, data: FormData) => {
     if (!selectedProduct) return;
     setFlows(prev => {
-      const prodFlow = prev[selectedProduct] || [{ id: Date.now(), requestData: null }];
-      const newFlow = prodFlow.map(item => item.id === id ? { ...item, requestData: data, resultData: null, completedAt: null } : item);
+      let prodFlow = prev[selectedProduct];
+      if (!prodFlow || prodFlow.length === 0) {
+        prodFlow = [{ id, requestData: null }];
+      }
+      const newFlow = prodFlow.map(item => {
+        if (item.id === id) {
+          // 임시 ID(1) 였던 경우 실제 제출 시점의 타임스탬프로 변경하여 1970년 버그 및 삭제 버그 방지
+          const realId = id === 1 ? Date.now() : id;
+          return { ...item, id: realId, requestData: data, resultData: null, completedAt: null };
+        }
+        return item;
+      });
       return { ...prev, [selectedProduct]: newFlow };
     });
   };
@@ -150,12 +174,15 @@ function App() {
   };
 
   return (
-    <div className={`bg-[#FAFAFA] text-gray-900 font-sans flex flex-col items-center relative ${!selectedProduct ? 'h-screen overflow-hidden' : 'min-h-screen pb-32'}`}>
+    <div className={`bg-[#FAFAFA] text-gray-900 font-sans flex flex-col items-center relative ${(!selectedAgent || !selectedProduct) ? 'h-screen overflow-hidden' : 'min-h-screen pb-32'}`}>
       
       {/* 상단 앱 헤더 */}
       <div className="w-full bg-[#FAFAFA]/80 backdrop-blur-md px-6 py-6 md:px-12 flex items-center justify-between z-50 mb-8 sticky top-0 border-b border-gray-200/50 shadow-sm shadow-gray-100/20">
         <button 
-          onClick={() => setSelectedProduct(null)}
+          onClick={() => {
+            setSelectedAgent(null);
+            setSelectedProduct(null);
+          }}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
         >
           <div className="w-6 h-6 bg-[#3182F6] rounded-full flex items-center justify-center"></div>
@@ -165,6 +192,14 @@ function App() {
         </button>
         
         <div className="flex items-center gap-4">
+          {selectedAgent && !selectedProduct && (
+            <div 
+              className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors" 
+              onClick={() => setSelectedAgent(null)}
+            >
+              <span className="text-sm font-bold text-gray-600">뒤로가기</span>
+            </div>
+          )}
           {selectedProduct && (
             <div 
               className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors" 
@@ -184,7 +219,9 @@ function App() {
         </div>
       </div>
 
-      {!selectedProduct ? (
+      {!selectedAgent ? (
+        <Home onSelectAgent={setSelectedAgent} />
+      ) : !selectedProduct ? (
         <ProductSelection onSelect={setSelectedProduct} />
       ) : (
         <div className="w-full max-w-4xl mx-auto flex flex-col space-y-16 px-4 md:px-8">
@@ -225,13 +262,6 @@ function App() {
         </AnimatePresence>
         </div>
       )}
-
-      {/* 하단 면책 조항 (은은하게 표시) */}
-      <div className="absolute bottom-6 w-full text-center px-4">
-        <p className="text-[11px] text-gray-400/80 font-medium tracking-tight">
-          본 서비스에서 제공되는 AI 판단 결과는 법적 효력을 갖지 않으며 참고용입니다. 입력된 정보는 서버에 저장되지 않으며 로컬 환경에서만 임시 보관됩니다.
-        </p>
-      </div>
 
       {/* 맨 아래로 스크롤하는 플로팅 버튼 (FAB) */}
       <AnimatePresence>
