@@ -50,7 +50,7 @@ export function Home({ onSelectAgent }: HomeProps) {
           </div>
         </button>
 
-        {/* 2번: 해약 리스크 안내 에이전트 */}
+        {/* 2번: 해약 리스크 안내 에이전트 (사용 중지됨)
         <button
           onClick={handleCancellationClick}
           className="group relative flex flex-col items-start p-8 md:p-10 bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-gray-300 hover:-translate-y-1 transition-all duration-300 text-left cursor-pointer overflow-hidden"
@@ -75,6 +75,7 @@ export function Home({ onSelectAgent }: HomeProps) {
             준비 중입니다 <ChevronRight className="w-4 h-4" />
           </div>
         </button>
+        */}
 
       </div>
 

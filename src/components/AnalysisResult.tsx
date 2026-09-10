@@ -7,13 +7,14 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FormData } from './InsuranceForm';
 import { smoothScrollToElement } from '../utils/scroll';
+import { DynamicFormRenderer } from './DynamicFormRenderer';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export interface AnalysisResultData {
-  status: 'approve' | 'reject' | 'review';
+  status: 'approve' | 'reject' | 'review' | 'form' | 'error';
   markdownText: string;
   // 하위 호환성을 위한 구 버전 필드들 (마이그레이션 용)
   reason?: string;
@@ -27,17 +28,50 @@ interface AnalysisResultProps {
   initialCompletedAt?: number | null;
   onAnalysisComplete?: (result: AnalysisResultData, timestamp: number) => void;
   onNextQuestion?: () => void;
+  onSubmitDynamicForm?: (answers: Record<string, any>, newDetail: string) => void;
+  onFormReceived?: (form: DynamicFormConfig) => void;
   flowItemId?: string;
 }
 
+export interface DynamicFormField {
+  field_id: string;
+  label: string;
+  input_type: 'radio' | 'textarea' | 'text' | 'checkbox';
+  options?: string[];
+  placeholder?: string;
+  required?: boolean;
+}
+
+export interface DynamicFormConfig {
+  notice_message: string;
+  form_fields: DynamicFormField[];
+}
+
 export interface ParsedAnalysis {
-  status: 'approve' | 'reject' | 'review';
+  status: 'approve' | 'reject' | 'review' | 'form' | 'error';
   confidence: string;
   remainingMarkdown: string;
+  dynamicForm?: DynamicFormConfig;
 }
 
 // 백엔드 마크다운 응답 파싱 엔진
 export function parseMarkdownResponse(markdown: string): ParsedAnalysis {
+  // 1. JSON 폼 확인
+  try {
+    const cleaned = markdown.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+    const parsedJson = JSON.parse(cleaned);
+    if (parsedJson && parsedJson.notice_message && Array.isArray(parsedJson.form_fields)) {
+      return {
+        status: 'form',
+        confidence: '100%',
+        remainingMarkdown: '',
+        dynamicForm: parsedJson
+      };
+    }
+  } catch (e) {
+    // Not a JSON, continue to markdown parsing
+  }
+
   const result: ParsedAnalysis = {
     status: 'review',
     confidence: '100%',
@@ -55,6 +89,8 @@ export function parseMarkdownResponse(markdown: string): ParsedAnalysis {
       result.status = 'reject';
     } else if (val.includes('지급') || val.includes('승인')) {
       result.status = 'approve';
+    } else if (val.includes('오류') || val.includes('실패')) {
+      result.status = 'error';
     } else {
       result.status = 'review';
     }
@@ -92,6 +128,15 @@ const runAnalysisWorkflow = async (data: FormData): Promise<AnalysisResultData> 
   const API_KEY = import.meta.env.VITE_DIFY_WORKFLOW_API_KEY || '';
 
   try {
+    let finalDetail = data.accident_detail;
+    if (data.dynamicAnswers && data.askedFormConfig) {
+      finalDetail += '\n\n[추가 정보 제공]\n' + 
+        Object.entries(data.dynamicAnswers).map(([key, val]) => {
+          const field = data.askedFormConfig!.form_fields.find(f => f.field_id === key);
+          return `- ${field?.label || key}: ${val}`;
+        }).join('\n');
+    }
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -101,7 +146,8 @@ const runAnalysisWorkflow = async (data: FormData): Promise<AnalysisResultData> 
       body: JSON.stringify({
         inputs: {
           product_name: data.product_name,
-          accident_detail: data.accident_detail
+          accident_detail: finalDetail,
+          is_followup: data.is_followup ? "true" : "false"
         },
         response_mode: 'blocking',
         user: 'developer_01'
@@ -118,9 +164,9 @@ const runAnalysisWorkflow = async (data: FormData): Promise<AnalysisResultData> 
     if (resultData.data?.status === 'failed' || resultData.data?.error) {
       console.error('Workflow API Failed:', resultData.data?.error);
       return {
-        status: 'review',
-        markdownText: `## [최종 심사 의견서]
-- 최종 결과: **검토필요**
+        status: 'error',
+        markdownText: `## [시스템 오류 발생]
+- 최종 결과: **시스템 오류**
 - 확신 점수: **0%** (오류 발생)
 
 **종합 의견:**
@@ -149,9 +195,9 @@ AI 심사 서버가 혼잡하거나 일시적인 오류가 발생했습니다. �
     console.error('Failed to run analysis workflow:', error);
     // 에러 발생 시 예외 처리 마크다운 반환
     return {
-      status: 'review',
-      markdownText: `## [최종 심사 의견서]
-- 최종 결과: **검토필요**
+      status: 'error',
+      markdownText: `## [시스템 오류 발생]
+- 최종 결과: **시스템 오류**
 - 확신 점수: **0%** (연결 실패)
 
 **종합 의견:**
@@ -167,6 +213,7 @@ export function AnalysisResult({
   initialCompletedAt, 
   onAnalysisComplete, 
   onNextQuestion,
+  onFormReceived,
   flowItemId
 }: AnalysisResultProps) {
   const [result, setResult] = useState<AnalysisResultData | null>(initialResultData || null);
@@ -209,11 +256,16 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
     setCompletedAt(null);
 
     runAnalysisWorkflow(requestData).then((res) => {
-      const time = Date.now();
-      setResult(res);
-      setCompletedAt(time);
-      if (onAnalysisComplete) {
-        onAnalysisComplete(res, time);
+      const parsed = parseMarkdownResponse(res.markdownText);
+      if (parsed.status === 'form' && parsed.dynamicForm && onFormReceived) {
+        onFormReceived(parsed.dynamicForm);
+      } else {
+        const time = Date.now();
+        setResult(res);
+        setCompletedAt(time);
+        if (onAnalysisComplete) {
+          onAnalysisComplete(res, time);
+        }
       }
     });
   }, [requestData, initialResultData]);
@@ -245,7 +297,7 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
   const parsed = result && result.markdownText ? parseMarkdownResponse(result.markdownText) : null;
 
   return (
-    <div ref={containerRef} className="w-full max-w-2xl mx-auto mt-8">
+    <div ref={containerRef} className="w-full max-w-2xl mx-auto">
       <AnimatePresence mode="wait">
         {!result || !parsed ? (
           <motion.div
@@ -296,7 +348,8 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                   "flex flex-col md:flex-row items-center md:justify-between p-6 md:p-8 rounded-xl gap-6 border transition-colors duration-500",
                   parsed.status === 'approve' && "bg-[#F0F4FF] border-[#D1DFF7] text-[#003DC4]",
                   parsed.status === 'reject' && "bg-[#FFF0F0] border-[#F7D1D1] text-[#D32F2F]",
-                  parsed.status === 'review' && "bg-[#FFFBF5] border-[#F7EEDC] text-[#B26A00]"
+                  parsed.status === 'review' && "bg-[#FFFBF5] border-[#F7EEDC] text-[#B26A00]",
+                  parsed.status === 'error' && "bg-[#F8F9FA] border-[#E8EDF5] text-gray-500"
                 )}>
                   <div className="flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
                     {parsed.status === 'approve' ? (
@@ -306,6 +359,10 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                     ) : parsed.status === 'reject' ? (
                       <div className="w-12 h-12 bg-white/50 text-red-600 rounded-full flex items-center justify-center shadow-inner">
                         <XCircle className="w-6 h-6" />
+                      </div>
+                    ) : parsed.status === 'error' ? (
+                      <div className="w-12 h-12 bg-white/50 text-gray-400 rounded-full flex items-center justify-center shadow-inner">
+                        <AlertCircle className="w-6 h-6" />
                       </div>
                     ) : (
                       <div className="w-12 h-12 bg-white/50 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
@@ -319,9 +376,10 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                           "inline-flex px-2.5 py-0.5 rounded-lg text-xs font-extrabold tracking-tight shadow-sm border",
                           parsed.status === 'approve' && "bg-blue-600 text-white border-blue-700",
                           parsed.status === 'reject' && "bg-red-600 text-white border-red-700",
-                          parsed.status === 'review' && "bg-amber-500 text-white border-amber-600"
+                          parsed.status === 'review' && "bg-amber-500 text-white border-amber-600",
+                          parsed.status === 'error' && "bg-gray-500 text-white border-gray-600"
                         )}>
-                          {parsed.status === 'approve' ? '지급 가능' : parsed.status === 'reject' ? '지급 거절' : '검토 필요'}
+                          {parsed.status === 'approve' ? '지급 가능' : parsed.status === 'reject' ? '지급 거절' : parsed.status === 'error' ? '시스템 오류' : '검토 필요'}
                         </span>
                       </div>
                       <h2 className="text-xl font-extrabold text-gray-900 leading-snug tracking-tight">
@@ -329,109 +387,136 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                           ? '보험금이 정상적으로 지급 처리됩니다.' 
                           : parsed.status === 'reject' 
                           ? '보험금 청구가 지급 보류(거절)되었습니다.' 
+                          : parsed.status === 'error'
+                          ? '시스템 오류로 심사를 진행하지 못했습니다.'
                           : '일부 필수 지급조건 검토가 요구됩니다.'}
                       </h2>
                     </div>
                   </div>
 
                   {/* SVG 확신 게이지 차트 */}
-                  <div className="relative flex items-center justify-center flex-shrink-0 w-24 h-24 bg-white rounded-xl shadow-sm border border-[#E8EDF5]">
-                    {(() => {
-                      const strokeWidth = 5;
-                      const radius = 34;
-                      const circumference = 2 * Math.PI * radius;
-                      const percentage = parseInt(parsed.confidence) || 0;
-                      const strokeDashoffset = circumference - (percentage / 100) * circumference;
+                  {parsed.status !== 'error' ? (
+                    <div className="relative flex items-center justify-center flex-shrink-0 w-24 h-24 bg-white rounded-xl shadow-sm border border-[#E8EDF5]">
+                      {(() => {
+                        const strokeWidth = 5;
+                        const radius = 34;
+                        const circumference = 2 * Math.PI * radius;
+                        const percentage = parseInt(parsed.confidence) || 0;
+                        const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-                      return (
-                        <>
-                          <svg className="w-20 h-20 transform -rotate-90">
-                            <circle
-                              className="text-[#F5F7FB]"
-                              strokeWidth={strokeWidth}
-                              stroke="currentColor"
-                              fill="transparent"
-                              r={radius}
-                              cx="40"
-                              cy="40"
-                            />
-                            <circle
-                              className={cn(
-                                parsed.status === 'approve' && 'text-blue-500',
-                                parsed.status === 'reject' && 'text-red-500',
-                                parsed.status === 'review' && 'text-amber-500'
-                              )}
-                              strokeWidth={strokeWidth}
-                              strokeDasharray={circumference}
-                              strokeDashoffset={strokeDashoffset}
-                              strokeLinecap="round"
-                              stroke="currentColor"
-                              fill="transparent"
-                              r={radius}
-                              cx="40"
-                              cy="40"
-                            />
-                          </svg>
-                          <div className="absolute flex flex-col items-center justify-center">
-                            <span className="text-[10px] text-gray-400 font-extrabold leading-none tracking-tight">확신 점수</span>
-                            <span className="text-lg font-black text-gray-900 leading-tight mt-0.5">{parsed.confidence}</span>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* 2. 유연한 마크다운 렌더링 영역 (ReactMarkdown) */}
-                <div className="mt-8 markdown-render-area">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      h2: ({node, ...props}) => (
-                        <div className="flex items-center justify-between border-b border-[#E8EDF5] pb-3 mt-10 mb-4">
-                          <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2" {...props}>
-                            <span className="w-1 h-5 bg-blue-500 rounded-sm"></span>
-                            {props.children}
-                          </h2>
-                        </div>
-                      ),
-                      h3: ({node, ...props}) => <h3 className="text-md font-bold text-gray-900 mt-6 mb-3" {...props} />,
-                      h4: ({node, ...props}) => <h4 className="text-[15px] font-bold text-gray-800 mt-5 mb-2 flex items-center gap-2" {...props} />,
-                      p: ({node, ...props}) => <p className="text-sm text-gray-700 leading-relaxed font-light break-keep mb-4" {...props} />,
-                      ul: ({node, ...props}) => <ul className="space-y-2 mb-6" {...props} />,
-                      ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-2 mb-6 text-sm text-gray-700 leading-relaxed font-light" {...props} />,
-                      li: ({node, ...props}) => {
-                        const isTask = props.className?.includes('task-list-item');
                         return (
-                          <li className={cn(
-                            "text-sm text-gray-700 leading-relaxed font-light group transition-colors",
-                            isTask ? "flex items-start gap-2 list-none" : "list-disc ml-5 break-keep"
-                          )} {...props} />
-                        )
-                      },
-                      input: ({node, ...props}) => {
-                        if (props.type === 'checkbox') {
-                          return <input type="checkbox" className="mt-1 w-4 h-4 rounded text-blue-500 border-gray-300 focus:ring-blue-500" readOnly checked={props.checked} />
-                        }
-                        return <input {...props} />
-                      },
-                      table: ({node, ...props}) => (
-                        <div className="overflow-x-auto -mx-6 md:-mx-10 border-y border-[#E8EDF5] bg-[#F5F7FB]/30 my-6">
-                          <table className="w-full text-left border-collapse text-xs md:text-sm" {...props} />
-                        </div>
-                      ),
-                      thead: ({node, ...props}) => <thead className="bg-[#F5F7FB] border-b border-[#E8EDF5]" {...props} />,
-                      th: ({node, ...props}) => <th className="px-4 py-4 font-bold text-gray-500 whitespace-nowrap" {...props} />,
-                      tbody: ({node, ...props}) => <tbody className="divide-y divide-[#E8EDF5]" {...props} />,
-                      td: ({node, ...props}) => <td className="px-4 py-4 text-gray-700 align-top leading-relaxed break-keep font-light" {...props} />,
-                      strong: ({node, ...props}) => <strong className="font-extrabold text-gray-900" {...props} />,
-                      hr: ({node, ...props}) => <hr className="border-t border-[#E8EDF5] my-10" {...props} />,
-                      blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-4 py-1 text-gray-600 bg-blue-50/50 rounded-r-lg my-4 text-sm" {...props} />
-                    }}
-                  >
-                    {parsed.remainingMarkdown}
-                  </ReactMarkdown>
+                          <>
+                            <svg className="w-20 h-20 transform -rotate-90">
+                              <circle
+                                className="text-[#F5F7FB]"
+                                strokeWidth={strokeWidth}
+                                stroke="currentColor"
+                                fill="transparent"
+                                r={radius}
+                                cx="40"
+                                cy="40"
+                              />
+                              <circle
+                                className={cn(
+                                  parsed.status === 'approve' && 'text-blue-500',
+                                  parsed.status === 'reject' && 'text-red-500',
+                                  parsed.status === 'review' && 'text-amber-500'
+                                )}
+                                strokeWidth={strokeWidth}
+                                strokeDasharray={circumference}
+                                strokeDashoffset={strokeDashoffset}
+                                strokeLinecap="round"
+                                stroke="currentColor"
+                                fill="transparent"
+                                r={radius}
+                                cx="40"
+                                cy="40"
+                              />
+                            </svg>
+                            <div className="absolute flex flex-col items-center justify-center">
+                              <span className="text-[10px] text-gray-400 font-extrabold leading-none tracking-tight">확신 점수</span>
+                              <span className="text-lg font-black text-gray-900 leading-tight mt-0.5">{parsed.confidence}</span>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-24 h-24 bg-gray-50/80 rounded-xl border border-gray-200/60 text-gray-400">
+                      <span className="text-[10px] font-extrabold leading-none tracking-tight text-gray-400">확신 점수</span>
+                      <span className="text-xs font-bold leading-tight mt-1.5 text-gray-400">측정 불가</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* 2. 유연한 마크다운 렌더링 영역 (ReactMarkdown) 또는 다이내믹 폼 */}
+                {parsed.status === 'form' && parsed.dynamicForm ? (
+                  <div className="mt-8">
+                    <DynamicFormRenderer 
+                      config={parsed.dynamicForm} 
+                      onSubmit={(answers) => {
+                        if (onSubmitDynamicForm) {
+                          const newDetail = requestData.accident_detail + '\n\n[추가 정보 제공]\n' + 
+                            Object.entries(answers).map(([key, val]) => {
+                              const field = parsed.dynamicForm!.form_fields.find(f => f.field_id === key);
+                              return `- ${field?.label || key}: ${val}`;
+                            }).join('\n');
+                          onSubmitDynamicForm(answers, newDetail);
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-8 markdown-render-area">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h2: ({node, ...props}) => (
+                          <div className="flex items-center justify-between border-b border-[#E8EDF5] pb-3 mt-10 mb-4">
+                            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2" {...props}>
+                              <span className="w-1 h-5 bg-blue-500 rounded-sm"></span>
+                              {props.children}
+                            </h2>
+                          </div>
+                        ),
+                        h3: ({node, ...props}) => <h3 className="text-md font-bold text-gray-900 mt-6 mb-3" {...props} />,
+                        h4: ({node, ...props}) => <h4 className="text-[15px] font-bold text-gray-800 mt-5 mb-2 flex items-center gap-2" {...props} />,
+                        p: ({node, ...props}) => <p className="text-sm text-gray-700 leading-relaxed font-light break-keep mb-4" {...props} />,
+                        ul: ({node, ...props}) => <ul className="space-y-2 mb-6" {...props} />,
+                        ol: ({node, ...props}) => <ol className="list-decimal pl-5 space-y-2 mb-6 text-sm text-gray-700 leading-relaxed font-light" {...props} />,
+                        li: ({node, ...props}) => {
+                          const isTask = props.className?.includes('task-list-item');
+                          return (
+                            <li className={cn(
+                              "text-sm text-gray-700 leading-relaxed font-light group transition-colors",
+                              isTask ? "flex items-start gap-2 list-none" : "list-disc ml-5 break-keep"
+                            )} {...props} />
+                          )
+                        },
+                        input: ({node, ...props}) => {
+                          if (props.type === 'checkbox') {
+                            return <input type="checkbox" className="mt-1 w-4 h-4 rounded text-blue-500 border-gray-300 focus:ring-blue-500" readOnly checked={props.checked} />
+                          }
+                          return <input {...props} />
+                        },
+                        table: ({node, ...props}) => (
+                          <div className="overflow-x-auto -mx-6 md:-mx-10 border-y border-[#E8EDF5] bg-[#F5F7FB]/30 my-6">
+                            <table className="w-full text-left border-collapse text-xs md:text-sm" {...props} />
+                          </div>
+                        ),
+                        thead: ({node, ...props}) => <thead className="bg-[#F5F7FB] border-b border-[#E8EDF5]" {...props} />,
+                        th: ({node, ...props}) => <th className="px-4 py-4 font-bold text-gray-500 whitespace-nowrap" {...props} />,
+                        tbody: ({node, ...props}) => <tbody className="divide-y divide-[#E8EDF5]" {...props} />,
+                        td: ({node, ...props}) => <td className="px-4 py-4 text-gray-700 align-top leading-relaxed break-keep font-light" {...props} />,
+                        strong: ({node, ...props}) => <strong className="font-extrabold text-gray-900" {...props} />,
+                        hr: ({node, ...props}) => <hr className="border-t border-[#E8EDF5] my-10" {...props} />,
+                        blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-4 py-1 text-gray-600 bg-blue-50/50 rounded-r-lg my-4 text-sm" {...props} />
+                      }}
+                    >
+                      {parsed.remainingMarkdown}
+                    </ReactMarkdown>
+                  </div>
+                )}
 
                 {/* 하단 액션 버튼 */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-100">
@@ -452,7 +537,7 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                   {onNextQuestion && (
                     <button 
                       onClick={onNextQuestion}
-                      className="flex-1 py-4 px-6 rounded-xl font-bold text-white bg-gray-900 hover:bg-black transition-colors text-center text-sm shadow-md cursor-pointer"
+                      className="flex-1 py-4 px-6 rounded-xl font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors text-center text-sm shadow-sm cursor-pointer"
                     >
                       새로운 심사 시작하기
                     </button>

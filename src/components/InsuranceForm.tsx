@@ -12,7 +12,13 @@ export interface FormData {
   product_name: string;
   accident_detail: string;
   testMode: 'random' | 'approve' | 'reject';
+  is_followup?: boolean;
+  dynamicAnswers?: Record<string, string | string[]>;
+  askedFormConfig?: DynamicFormConfig | null;
 }
+
+import { DynamicFormConfig } from './AnalysisResult';
+import { DynamicFormRenderer } from './DynamicFormRenderer';
 
 interface InsuranceFormProps {
   onSubmit: (data: FormData) => void;
@@ -20,18 +26,30 @@ interface InsuranceFormProps {
   timestamp?: number;
   initialData?: FormData;
   productName: string;
+  askedForm?: DynamicFormConfig;
 }
 
-export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, productName }: InsuranceFormProps) {
+export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, productName, askedForm }: InsuranceFormProps) {
   const [details, setDetails] = useState(initialData?.accident_detail || '');
   const [testMode, setTestMode] = useState<'random' | 'approve' | 'reject'>(initialData?.testMode || 'random');
   const [isEditing, setIsEditing] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!details) return;
+  const handleSubmit = (e?: React.FormEvent, dynamicAnswers?: Record<string, string | string[]>) => {
+    if (e) e.preventDefault();
+    if (!details.trim()) {
+      alert('사고 및 청구 내용을 입력해주세요.');
+      return;
+    }
     setIsEditing(false);
-    onSubmit({ product_name: productName, accident_detail: details, testMode });
+
+    onSubmit({ 
+      product_name: productName, 
+      accident_detail: details, 
+      testMode,
+      is_followup: !!dynamicAnswers || !!initialData?.dynamicAnswers,
+      dynamicAnswers: dynamicAnswers || initialData?.dynamicAnswers,
+      askedFormConfig: askedForm || initialData?.askedFormConfig
+    });
   };
 
   const isFormDisabled = disabled && !isEditing;
@@ -40,11 +58,20 @@ export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, prod
     <div className={cn(
       "bg-white rounded-[24px] shadow-sm border border-gray-100 p-8 md:p-12 w-full max-w-2xl mx-auto transition-all duration-500"
     )}>
-      <h1 className="text-[28px] font-bold text-gray-900 mb-10 tracking-tight">
+      <h1 className="text-[28px] font-bold text-gray-900 mb-6 tracking-tight">
         보상 청구 내용을 입력하세요.
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      {askedForm && !isFormDisabled && (
+        <div className="mb-8 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex items-start gap-3">
+          <div className="text-blue-500 font-bold mt-0.5">ℹ️</div>
+          <p className="text-sm font-medium text-blue-800 leading-relaxed">
+            AI가 추가 정보가 필요하다고 판단했습니다. 아래 사고 경위를 수정하시거나, 추가된 질문 폼에 답변해 주세요.
+          </p>
+        </div>
+      )}
+
+      <form onSubmit={(e) => { if (!askedForm) handleSubmit(e); else e.preventDefault(); }} className="space-y-8">
         {/* 사고 경위 텍스트 입력 영역 */}
         <div className="space-y-3">
           <label className="block text-sm font-medium text-gray-500">
@@ -59,8 +86,32 @@ export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, prod
           />
         </div>
 
+        {initialData?.dynamicAnswers && isFormDisabled && (
+          <div className="space-y-3 bg-gray-50 p-5 rounded-xl border border-gray-100 mt-6">
+            <h4 className="text-[13px] font-bold text-gray-500 mb-2">제출된 추가 정보</h4>
+            {Object.entries(initialData.dynamicAnswers).map(([k, v]) => {
+              const field = initialData.askedFormConfig?.form_fields.find(f => f.field_id === k);
+              return (
+                <div key={k} className="text-[15px] text-gray-800 break-keep leading-relaxed">
+                  <span className="font-semibold block text-xs text-gray-400 mb-0.5">{field?.label || k}</span>
+                  {String(v)}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {askedForm && !isFormDisabled && (
+          <div className="mt-8 border-t border-gray-100 pt-8">
+            <DynamicFormRenderer 
+              config={askedForm} 
+              onSubmit={(answers) => handleSubmit(undefined, answers)} 
+            />
+          </div>
+        )}
+
         {/* 테스트 모드 선택 및 제출 버튼 */}
-        {!isFormDisabled ? (
+        {!isFormDisabled && !askedForm ? (
           <>
             <div className="hidden space-y-3 bg-gray-50 p-4 rounded-xl">
               <label className="block text-xs font-semibold text-gray-500">

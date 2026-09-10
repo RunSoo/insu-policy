@@ -7,147 +7,166 @@ import { Sidebar } from './components/Sidebar';
 import type { AnalysisResultData } from './components/AnalysisResult';
 import { smoothScrollToBottom } from './utils/scroll';
 import { ProductSelection } from './components/ProductSelection';
-import { Home } from './components/Home';
+import { ShinhanLogo } from './components/ShinhanLogo';
+import type { DynamicFormConfig } from './components/AnalysisResult';
 
 export interface FlowItem {
   id: number;
   requestData: FormData | null;
   resultData?: AnalysisResultData | null;
   completedAt?: number | null;
+  askedForm?: DynamicFormConfig | null;
 }
 
+export interface FlowSession {
+  id: number;
+  productName: string;
+  items: FlowItem[];
+  updatedAt: number;
+}
+
+const STORAGE_KEY_V3 = 'toss_insurance_flows_v3';
 const STORAGE_KEY_V2 = 'toss_insurance_flows_v2';
 const STORAGE_KEY_V1 = 'toss_insurance_flow_v1';
 const PRODUCT_STORAGE_KEY = 'toss_insurance_product_v1';
-const AGENT_STORAGE_KEY = 'toss_insurance_agent_v1';
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
 function App() {
-  const [selectedAgent, setSelectedAgent] = useState<'claims' | 'cancellation' | null>(() => {
-    return (localStorage.getItem(AGENT_STORAGE_KEY) as any) || null;
-  });
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (selectedAgent) {
-      localStorage.setItem(AGENT_STORAGE_KEY, selectedAgent);
-    } else {
-      localStorage.removeItem(AGENT_STORAGE_KEY);
-    }
-  }, [selectedAgent]);
-
-  const [selectedProduct, setSelectedProduct] = useState<string | null>(() => {
-    return localStorage.getItem(PRODUCT_STORAGE_KEY);
-  });
-
-  useEffect(() => {
-    if (selectedProduct) {
-      localStorage.setItem(PRODUCT_STORAGE_KEY, selectedProduct);
-    } else {
-      localStorage.removeItem(PRODUCT_STORAGE_KEY);
-    }
-  }, [selectedProduct]);
-
-  const [flows, setFlows] = useState<Record<string, FlowItem[]>>(() => {
+  const [sessions, setSessions] = useState<FlowSession[]>(() => {
     try {
-      const savedV2 = localStorage.getItem(STORAGE_KEY_V2);
-      if (savedV2) {
-        const parsed = JSON.parse(savedV2);
-        const now = Date.now();
-        const validFlows: Record<string, FlowItem[]> = {};
-        for (const [prod, flowArr] of Object.entries(parsed)) {
-          const validArr = (flowArr as FlowItem[]).filter(item => (now - item.id) < TWENTY_FOUR_HOURS);
-          if (validArr.length > 0) {
-            const lastItem = validArr[validArr.length - 1];
-            if (lastItem.requestData !== null) {
-              validArr.push({ id: Date.now(), requestData: null });
-            }
-            validFlows[prod] = validArr;
-          }
-        }
-        return validFlows;
+      const savedV3 = localStorage.getItem(STORAGE_KEY_V3);
+      if (savedV3) {
+        return JSON.parse(savedV3);
       }
 
-      // v1 마이그레이션
-      const savedV1 = localStorage.getItem(STORAGE_KEY_V1);
-      if (savedV1) {
-        const parsed: FlowItem[] = JSON.parse(savedV1);
-        const now = Date.now();
-        const validFlow = parsed.filter(item => (now - item.id) < TWENTY_FOUR_HOURS);
-        if (validFlow.length > 0) {
-          const migrated: Record<string, FlowItem[]> = {};
-          validFlow.forEach(item => {
-            const prod = item.requestData?.product_name;
-            if (prod) {
-              if (!migrated[prod]) migrated[prod] = [];
-              migrated[prod].push(item);
-            }
-          });
-          for (const arr of Object.values(migrated)) {
-            const lastItem = arr[arr.length - 1];
-            if (lastItem.requestData !== null) {
-              arr.push({ id: Date.now(), requestData: null });
-            }
+      // v2 -> v3 Migration
+      const savedV2 = localStorage.getItem(STORAGE_KEY_V2);
+      if (savedV2) {
+        const parsed: Record<string, FlowItem[]> = JSON.parse(savedV2);
+        const migrated: FlowSession[] = [];
+        for (const [prodName, flowArr] of Object.entries(parsed)) {
+          if (flowArr.length > 0) {
+             migrated.push({
+               id: Date.now() + Math.random(),
+               productName: prodName,
+               items: flowArr,
+               updatedAt: flowArr[flowArr.length - 1].completedAt || Date.now()
+             });
           }
-          return migrated;
         }
+        return migrated;
       }
     } catch (e) {
       console.error('Failed to load flows', e);
     }
-    return {};
+    return [];
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(flows));
-  }, [flows]);
+    localStorage.setItem(STORAGE_KEY_V3, JSON.stringify(sessions));
+  }, [sessions]);
 
-  const currentFlow = selectedProduct ? (flows[selectedProduct] || [{ id: 1, requestData: null }]) : [];
+  const handleProductSelect = (productName: string) => {
+    const newSessionId = Date.now();
+    const newSession: FlowSession = {
+      id: newSessionId,
+      productName: productName,
+      items: [{ id: Date.now(), requestData: null }],
+      updatedAt: Date.now()
+    };
+    setSessions(prev => [...prev, newSession]);
+    setActiveSessionId(newSessionId);
+  };
+
+  const activeSession = sessions.find(s => s.id === activeSessionId) || null;
+  const selectedProduct = activeSession?.productName || null;
+  const currentFlow = activeSession?.items || [];
 
   // 상품 선택 후 메인 화면 진입 시 기존 질문 내역이 있다면 새 질문 폼 위치로 부드럽게 스크롤
   useEffect(() => {
-    if (selectedProduct && currentFlow.length > 1) {
+    if (activeSessionId && currentFlow.length > 1) {
       const timer = setTimeout(() => {
         smoothScrollToBottom(1.2); 
       }, 600); 
       return () => clearTimeout(timer);
     }
-  }, [selectedProduct]);
+  }, [activeSessionId]);
 
   const handleSubmit = (id: number, data: FormData) => {
-    if (!selectedProduct) return;
-    setFlows(prev => {
-      let prodFlow = prev[selectedProduct];
-      if (!prodFlow || prodFlow.length === 0) {
-        prodFlow = [{ id, requestData: null }];
+    if (!activeSessionId) return;
+    setSessions(prev => prev.map(session => {
+      if (session.id === activeSessionId) {
+        const newFlow = session.items.map(item => {
+          if (item.id === id) {
+            // 임시 ID(1) 였던 경우 실제 제출 시점의 타임스탬프로 변경하여 1970년 버그 및 삭제 버그 방지
+            const realId = id === 1 ? Date.now() : id;
+            return { ...item, id: realId, requestData: data, resultData: null, completedAt: null, askedForm: null };
+          }
+          return item;
+        });
+        return { ...session, items: newFlow, updatedAt: Date.now() };
       }
-      const newFlow = prodFlow.map(item => {
-        if (item.id === id) {
-          // 임시 ID(1) 였던 경우 실제 제출 시점의 타임스탬프로 변경하여 1970년 버그 및 삭제 버그 방지
-          const realId = id === 1 ? Date.now() : id;
-          return { ...item, id: realId, requestData: data, resultData: null, completedAt: null };
-        }
-        return item;
-      });
-      return { ...prev, [selectedProduct]: newFlow };
-    });
+      return session;
+    }));
   };
 
   const handleAnalysisComplete = (id: number, resultData: AnalysisResultData, completedAt: number) => {
-    if (!selectedProduct) return;
-    setFlows(prev => {
-      const prodFlow = prev[selectedProduct] || [];
-      const newFlow = prodFlow.map(item => item.id === id ? { ...item, resultData, completedAt } : item);
-      return { ...prev, [selectedProduct]: newFlow };
-    });
+    if (!activeSessionId) return;
+    setSessions(prev => prev.map(session => {
+      if (session.id === activeSessionId) {
+        const newFlow = session.items.map(item => item.id === id ? { ...item, resultData, completedAt } : item);
+        return { ...session, items: newFlow, updatedAt: Date.now() };
+      }
+      return session;
+    }));
+  };
+
+  const handleFormReceived = (id: number, form: DynamicFormConfig) => {
+    if (!activeSessionId) return;
+    setSessions(prev => prev.map(session => {
+      if (session.id === activeSessionId) {
+        const newFlow = session.items.map(item => item.id === id ? { ...item, askedForm: form, resultData: null, completedAt: null } : item);
+        return { ...session, items: newFlow, updatedAt: Date.now() };
+      }
+      return session;
+    }));
   };
 
   const handleNextQuestion = () => {
-    if (!selectedProduct) return;
-    setFlows(prev => {
-      const prodFlow = prev[selectedProduct] || [];
-      return { ...prev, [selectedProduct]: [...prodFlow, { id: Date.now(), requestData: null }] };
-    });
+    if (!activeSessionId) return;
+    setSessions(prev => prev.map(session => {
+      if (session.id === activeSessionId) {
+        return { ...session, items: [...session.items, { id: Date.now(), requestData: null }], updatedAt: Date.now() };
+      }
+      return session;
+    }));
     
+    setTimeout(() => {
+      smoothScrollToBottom();
+    }, 100);
+  };
+
+  const handleDynamicSubmit = (answers: Record<string, any>, newDetail: string) => {
+    if (!activeSessionId || !selectedProduct) return;
+    
+    const newId = Date.now();
+    const newData: FormData = {
+      product_name: selectedProduct,
+      accident_detail: newDetail,
+      testMode: 'random', // or keep from previous if needed, but random is safe
+      is_followup: true,
+      dynamicAnswers: answers
+    };
+
+    setSessions(prev => prev.map(session => {
+      if (session.id === activeSessionId) {
+        return { ...session, items: [...session.items, { id: newId, requestData: newData, resultData: null, completedAt: null }], updatedAt: Date.now() };
+      }
+      return session;
+    }));
+
     setTimeout(() => {
       smoothScrollToBottom();
     }, 100);
@@ -174,39 +193,30 @@ function App() {
   };
 
   return (
-    <div className={`bg-[#FAFAFA] text-gray-900 font-sans flex flex-col items-center relative ${(!selectedAgent || !selectedProduct) ? 'h-screen overflow-hidden' : 'min-h-screen pb-32'}`}>
+    <div className={`bg-[#FAFAFA] text-gray-900 font-sans flex flex-col items-center relative ${!activeSessionId ? 'h-screen overflow-hidden' : 'min-h-screen pb-32'}`}>
       
       {/* 상단 앱 헤더 */}
       <div className="w-full bg-[#FAFAFA]/80 backdrop-blur-md px-6 py-6 md:px-12 flex items-center justify-between z-50 mb-8 sticky top-0 border-b border-gray-200/50 shadow-sm shadow-gray-100/20">
         <button 
           onClick={() => {
-            setSelectedAgent(null);
-            setSelectedProduct(null);
+            setActiveSessionId(null);
           }}
           className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
         >
-          <div className="w-6 h-6 bg-[#3182F6] rounded-full flex items-center justify-center"></div>
+          <ShinhanLogo className="w-7 h-7 shrink-0" />
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">
             보상가이드 AI
           </h1>
         </button>
         
         <div className="flex items-center gap-4">
-          {selectedAgent && !selectedProduct && (
-            <div 
-              className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors" 
-              onClick={() => setSelectedAgent(null)}
-            >
-              <span className="text-sm font-bold text-gray-600">뒤로가기</span>
-            </div>
-          )}
           {selectedProduct && (
             <div 
               className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors" 
-              onClick={() => setSelectedProduct(null)}
+              onClick={() => setActiveSessionId(null)}
             >
               <span className="text-sm font-bold text-[#3182F6]">{selectedProduct}</span>
-              <span className="text-[11px] text-[#3182F6] opacity-70 bg-white px-1.5 py-0.5 rounded-md">변경</span>
+              <span className="text-[11px] text-[#3182F6] opacity-70 bg-white px-1.5 py-0.5 rounded-md">새 질문</span>
             </div>
           )}
           <button 
@@ -219,10 +229,8 @@ function App() {
         </div>
       </div>
 
-      {!selectedAgent ? (
-        <Home onSelectAgent={setSelectedAgent} />
-      ) : !selectedProduct ? (
-        <ProductSelection onSelect={setSelectedProduct} />
+      {!activeSessionId ? (
+        <ProductSelection onSelect={handleProductSelect} />
       ) : (
         <div className="w-full max-w-4xl mx-auto flex flex-col space-y-16 px-4 md:px-8">
         <AnimatePresence>
@@ -233,26 +241,29 @@ function App() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="w-full flex flex-col space-y-8"
+              className="w-full flex flex-col space-y-3"
             >
               <div className="w-full transition-all duration-500 ease-in-out">
                 <InsuranceForm 
                   onSubmit={(data) => handleSubmit(item.id, data)} 
-                  disabled={item.requestData !== null} 
+                  disabled={item.requestData !== null && !item.askedForm} 
                   timestamp={item.id}
                   initialData={item.requestData || undefined}
                   productName={selectedProduct!}
+                  askedForm={item.askedForm || undefined}
                 />
               </div>
 
-              {item.requestData && (
+              {item.requestData && !item.askedForm && (
                 <div className="w-full">
                   <AnalysisResult 
                     requestData={item.requestData} 
                     initialResultData={item.resultData}
                     initialCompletedAt={item.completedAt}
                     onAnalysisComplete={(res, time) => handleAnalysisComplete(item.id, res, time)}
-                    onNextQuestion={index === currentFlow.length - 1 ? handleNextQuestion : undefined} 
+                    onFormReceived={(form) => handleFormReceived(item.id, form)}
+                    onNextQuestion={handleNextQuestion} 
+                    onSubmitDynamicForm={handleDynamicSubmit}
                     flowItemId={`flow-item-${item.id}`}
                   />
                 </div>
@@ -287,8 +298,8 @@ function App() {
       <Sidebar 
         isOpen={isSidebarOpen} 
         onClose={() => setIsSidebarOpen(false)} 
-        flows={flows} 
-        onSelectProduct={setSelectedProduct}
+        sessions={sessions} 
+        onSelectSession={setActiveSessionId}
       />
     </div>
   );

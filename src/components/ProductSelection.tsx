@@ -2,12 +2,7 @@ import { useState } from 'react';
 import { Search, ShieldCheck } from 'lucide-react';
 
 export const PRODUCTS = [
-  '해외여행자 보험',
-  '국내여행자 보험',
-  '실손의료 보험',
-  '자동차 보험',
-  '운전자 보험',
-  '펫 보험',
+  '신한 SOL 처음해외여행보험',
 ];
 
 interface ProductSelectionProps {
@@ -26,10 +21,10 @@ export function ProductSelection({ onSelect }: ProductSelectionProps) {
           <ShieldCheck className="w-8 h-8" />
         </div>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-          어떤 약관을 조회하시겠습니까?
+          어떤 보험 상품을 심사하시겠습니까?
         </h1>
         <p className="text-gray-500 text-lg">
-          AI 심사를 진행할 보험 상품(약관)을 먼저 선택해주세요.
+          AI 심사를 진행할 보험 상품을 선택해 주세요.
         </p>
       </div>
 
