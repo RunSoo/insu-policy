@@ -4,10 +4,8 @@ interface ShinhanLogoProps {
 
 export function ShinhanLogo({ className = "w-7 h-7" }: ShinhanLogoProps) {
   return (
-    <img 
-      src="/shinhan_symbol_only.png?v=3" 
-      alt="신한금융그룹" 
-      className={`object-contain shrink-0 ${className}`}
-    />
+    <div 
+      className={`object-contain shrink-0 ${className} bg-blue-500 rounded-full font-bold text-white content-center justify-center text-sm/7 flex`}
+    >i</div>
   );
 }

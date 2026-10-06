@@ -90,7 +90,7 @@ export function DynamicFormRenderer({ config, onSubmit }: DynamicFormRendererPro
             type="button"
             onClick={handleSubmit}
             disabled={!isFormValid}
-            className="w-full py-4 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
+            className="w-full py-4 rounded-xl font-bold text-white bg-[#0046FF] hover:bg-[#0038CC] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
           >
             답변 제출하기
           </button>

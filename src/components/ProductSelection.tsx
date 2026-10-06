@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, ShieldCheck } from 'lucide-react';
 
 export const PRODUCTS = [
-  '신한 SOL 처음해외여행보험',
+  '신한 SOL 처음해외여행보험', '신한 단체상해보험'
 ];
 
 interface ProductSelectionProps {
@@ -17,7 +17,7 @@ export function ProductSelection({ onSelect }: ProductSelectionProps) {
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col px-4 md:px-8 mt-6 md:mt-12 flex-1 min-h-0 pb-12">
       <div className="text-center space-y-4 shrink-0 mb-8">
-        <div className="w-16 h-16 bg-blue-50 text-[#3182F6] rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="w-16 h-16 bg-blue-50 text-[#0046FF] rounded-full flex items-center justify-center mx-auto mb-6">
           <ShieldCheck className="w-8 h-8" />
         </div>
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -54,7 +54,7 @@ export function ProductSelection({ onSelect }: ProductSelectionProps) {
                 onClick={() => onSelect(p)}
               >
                 {p}
-                <span className="text-sm text-[#3182F6] opacity-0 group-hover:opacity-100 transition-opacity font-bold">
+                <span className="text-sm text-[#0046FF] opacity-0 group-hover:opacity-100 transition-opacity font-bold">
                   선택
                 </span>
               </li>

@@ -27,25 +27,25 @@ export function Home({ onSelectAgent }: HomeProps) {
         {/* 1번: 보상 심사 에이전트 */}
         <button
           onClick={() => onSelectAgent('claims')}
-          className="group relative flex flex-col items-start p-8 md:p-10 bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-300 text-left cursor-pointer overflow-hidden"
+          className="group relative flex flex-col items-start p-8 md:p-10 bg-white rounded-3xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-[#0046FF] hover:-translate-y-1 transition-all duration-300 text-left cursor-pointer overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-full blur-3xl -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#EFF4FF] rounded-full blur-3xl -mr-10 -mt-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
           
-          <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-8 border border-blue-100 shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+          <div className="w-16 h-16 bg-[#EFF4FF] text-[#0046FF] rounded-2xl flex items-center justify-center mb-8 border border-blue-100 shadow-inner group-hover:bg-[#0046FF] group-hover:text-white transition-colors duration-300">
             <ShieldCheck className="w-8 h-8" />
           </div>
           
           <h2 className="text-2xl font-bold text-gray-900 mb-3 tracking-tight">
             보상 심사 및 면·부책 판단<br/>에이전트
           </h2>
-          <p className="text-sm font-semibold text-blue-500 tracking-wider uppercase mb-4">
+          <p className="text-sm font-semibold text-[#0046FF] tracking-wider uppercase mb-4">
             Claims Judgment Agent
           </p>
           <p className="text-gray-500 text-sm leading-relaxed font-light mb-8 flex-grow">
             고객의 사고 경위를 바탕으로 해당 약관을 분석하고, 보험금 지급 여부 및 상세 면·부책 근거를 자동으로 산출합니다.
           </p>
           
-          <div className="flex items-center gap-2 text-blue-600 font-bold text-sm mt-auto">
+          <div className="flex items-center gap-2 text-[#0046FF] font-bold text-sm mt-auto">
             시작하기 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
         </button>

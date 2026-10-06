@@ -3,7 +3,8 @@
 
 @theme {
   --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
-  --color-toss-blue: #3182F6;
+  --color-toss-blue: #0046FF;
+  --color-shinhan-blue: #0046FF;
   --color-toss-bg: #FAFAFA;
 }
 

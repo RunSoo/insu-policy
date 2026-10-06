@@ -346,14 +346,14 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                 {/* 1. 상단 상태 배너 및 게이지 영역 */}
                 <div className={cn(
                   "flex flex-col md:flex-row items-center md:justify-between p-6 md:p-8 rounded-xl gap-6 border transition-colors duration-500",
-                  parsed.status === 'approve' && "bg-[#F0F4FF] border-[#D1DFF7] text-[#003DC4]",
+                  parsed.status === 'approve' && "bg-[#EFF4FF] border-[#C2D6FF] text-[#0046FF]",
                   parsed.status === 'reject' && "bg-[#FFF0F0] border-[#F7D1D1] text-[#D32F2F]",
                   parsed.status === 'review' && "bg-[#FFFBF5] border-[#F7EEDC] text-[#B26A00]",
                   parsed.status === 'error' && "bg-[#F8F9FA] border-[#E8EDF5] text-gray-500"
                 )}>
                   <div className="flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
                     {parsed.status === 'approve' ? (
-                      <div className="w-12 h-12 bg-white/50 text-blue-600 rounded-full flex items-center justify-center shadow-inner">
+                      <div className="w-12 h-12 bg-white/50 text-[#0046FF] rounded-full flex items-center justify-center shadow-inner">
                         <CheckCircle2 className="w-6 h-6" />
                       </div>
                     ) : parsed.status === 'reject' ? (
@@ -374,7 +374,7 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                       <div className="flex items-center justify-center md:justify-start gap-2">
                         <span className={cn(
                           "inline-flex px-2.5 py-0.5 rounded-lg text-xs font-extrabold tracking-tight shadow-sm border",
-                          parsed.status === 'approve' && "bg-blue-600 text-white border-blue-700",
+                          parsed.status === 'approve' && "bg-[#0046FF] text-white border-[#0038CC]",
                           parsed.status === 'reject' && "bg-red-600 text-white border-red-700",
                           parsed.status === 'review' && "bg-amber-500 text-white border-amber-600",
                           parsed.status === 'error' && "bg-gray-500 text-white border-gray-600"
@@ -418,7 +418,7 @@ ${result.reason || '이전 저장 내역에서 복원된 리포트입니다.'}
                               />
                               <circle
                                 className={cn(
-                                  parsed.status === 'approve' && 'text-blue-500',
+                                  parsed.status === 'approve' && 'text-[#0046FF]',
                                   parsed.status === 'reject' && 'text-red-500',
                                   parsed.status === 'review' && 'text-amber-500'
                                 )}

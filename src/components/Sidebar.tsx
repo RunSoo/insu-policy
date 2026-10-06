@@ -77,7 +77,7 @@ export function Sidebar({ isOpen, onClose, sessions, onSelectSession }: SidebarP
                 sortedGroups.map(group => (
                   <div key={group.productName} className="space-y-3">
                     <h3 className="text-xs font-bold text-gray-500 px-2 flex items-center gap-2">
-                       <span className="w-1.5 h-1.5 rounded-full bg-[#3182F6]"></span>
+                       <span className="w-1.5 h-1.5 rounded-full bg-[#0046FF]"></span>
                        {group.productName}
                     </h3>
                     <div className="space-y-2">

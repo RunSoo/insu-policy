@@ -81,8 +81,8 @@ export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, prod
             disabled={isFormDisabled}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="고객이 접수한 사고 경위 및 청구 사유를 상세히 입력해 주세요."
-            className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#3182F6] transition-all duration-200 rounded-xl px-5 py-4 text-gray-900 placeholder:text-gray-400 resize-none h-48 outline-none disabled:bg-transparent disabled:text-gray-700 disabled:border-none disabled:resize-none text-[15px] leading-relaxed disabled:cursor-not-allowed"
+            placeholder="접수하고자 하는 사고 경위 및 청구 사유를 상세히 입력해 주세요. &#10;입력이 부족하거나 적합하지 않을 경우 정확하지 않은 결과가 나올 수 있음을 유의해주시기 바랍니다. "
+            className="w-full bg-white border border-gray-200 hover:border-gray-300 focus:border-[#0046FF] transition-all duration-200 rounded-xl px-5 py-4 text-gray-900 placeholder:text-gray-400 resize-none h-48 outline-none disabled:bg-transparent disabled:text-gray-700 disabled:border-none disabled:resize-none text-[15px] leading-relaxed disabled:cursor-not-allowed"
           />
         </div>
 
@@ -126,7 +126,7 @@ export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, prod
                       value={mode}
                       checked={testMode === mode}
                       onChange={() => setTestMode(mode)}
-                      className="w-4 h-4 text-[#3182F6] focus:ring-[#3182F6]"
+                      className="w-4 h-4 text-[#0046FF] focus:ring-[#0046FF]"
                     />
                     <span className="text-sm text-gray-700">
                       {mode === 'random' ? '랜덤' : mode === 'approve' ? '지급' : '부지급'}
@@ -139,7 +139,7 @@ export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, prod
             <button
               type="submit"
               disabled={!details}
-              className="w-full bg-[#3182F6] hover:bg-blue-600 disabled:bg-[#B0B8C1] text-white font-semibold rounded-xl py-4 transition-colors text-lg mt-4 cursor-pointer disabled:cursor-not-allowed"
+              className="w-full bg-[#0046FF] hover:bg-[#0038CC] disabled:bg-[#B0B8C1] text-white font-semibold rounded-xl py-4 transition-colors text-lg mt-4 cursor-pointer disabled:cursor-not-allowed"
             >
               {isEditing ? '수정된 내용으로 다시 심사하기' : '약관 기반 AI 심사 시작'}
             </button>
@@ -152,7 +152,7 @@ export function InsuranceForm({ onSubmit, disabled, timestamp, initialData, prod
             <button 
               type="button"
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-[#3182F6] transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-blue-50"
+              className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-[#0046FF] transition-colors cursor-pointer px-3 py-1.5 rounded-lg hover:bg-blue-50"
             >
               <Pencil className="w-4 h-4" />
               수정하기
