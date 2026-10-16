@@ -1,14 +1,15 @@
-import React from 'react';
-import { ShieldCheck, Activity, ChevronRight, Info } from 'lucide-react';
+import { ShieldCheck, ChevronRight, Info } from 'lucide-react';
 
 interface HomeProps {
   onSelectAgent: (agent: 'claims' | 'cancellation') => void;
 }
 
 export function Home({ onSelectAgent }: HomeProps) {
+  /*
   const handleCancellationClick = () => {
     alert('해당 에이전트는 현재 준비 중입니다.');
   };
+  */
 
   return (
     <div className="w-full max-w-5xl mx-auto flex flex-col items-center justify-center min-h-[80vh] px-4 md:px-8 py-10">

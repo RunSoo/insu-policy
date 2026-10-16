@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { DynamicFormConfig } from './AnalysisResult';
 import { CheckCircle2 } from 'lucide-react';
 
