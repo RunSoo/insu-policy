@@ -9,8 +9,26 @@
 }
 
 @layer base {
+  * {
+    /* 반응형 한국어 줄바꿈 및 오버플로우 방지 기본값 */
+    overflow-wrap: break-word;
+  }
+
   body {
     @apply antialiased text-gray-900;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    text-wrap: pretty;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
+
+  p, li, label, button, span {
+    word-break: keep-all;
   }
 
   textarea::placeholder, 
@@ -18,6 +36,7 @@
     color: #9ca3af !important; /* gray-400 */
     font-weight: 300 !important;
     opacity: 1 !important;
+    word-break: keep-all;
   }
 
   /* 전역 스크롤바 디자인 최적화 (미니멀 & 현대적) */

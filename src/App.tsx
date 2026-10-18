@@ -247,39 +247,45 @@ function App() {
       className={`bg-[#FAFAFA] text-gray-900 font-sans flex flex-col items-center relative ${!activeSessionId ? "h-screen overflow-hidden" : "min-h-screen pb-32"}`}
     >
       {/* 상단 앱 헤더 */}
-      <div className="w-full bg-[#FAFAFA]/80 backdrop-blur-md px-6 py-6 md:px-12 flex items-center justify-between z-50 mb-8 sticky top-0 border-b border-gray-200/50 shadow-sm shadow-gray-100/20">
+      <div className="w-full bg-[#FAFAFA]/90 backdrop-blur-md px-4 py-3 sm:px-6 md:px-12 md:py-6 flex items-center justify-between z-50 mb-4 sm:mb-8 sticky top-0 border-b border-gray-200/50 shadow-xs shadow-gray-100/20">
         <button
           onClick={() => {
             setActiveSessionId(null);
           }}
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          className="flex items-center gap-2 sm:gap-2.5 hover:opacity-85 transition-opacity cursor-pointer shrink-0"
+          aria-label="홈으로 이동"
         >
           <ShinhanLogo className="w-7 h-7 shrink-0" />
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+          <h1
+            className={`text-base sm:text-xl font-bold text-gray-900 tracking-tight shrink-0 break-keep ${
+              selectedProduct ? "hidden sm:inline-block" : "inline-block"
+            }`}
+          >
             보상가이드 AI
           </h1>
         </button>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink min-w-0">
           {selectedProduct && (
             <div
-              className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors"
+              className="flex items-center gap-1.5 sm:gap-2 bg-blue-50/90 px-2.5 sm:px-3 py-1.5 rounded-xl border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors shrink min-w-0 shadow-2xs"
               onClick={() => setActiveSessionId(null)}
+              title="다른 상품 선택 또는 새 질문"
             >
-              <span className="text-sm font-bold text-[#3182F6]">
+              <span className="text-xs sm:text-sm font-bold text-[#3182F6] truncate max-w-[150px] xs:max-w-[180px] sm:max-w-none">
                 {selectedProduct}
               </span>
-              <span className="text-[11px] text-[#3182F6] opacity-70 bg-white px-1.5 py-0.5 rounded-md">
+              <span className="text-[10px] sm:text-[11px] text-[#3182F6] bg-white px-1.5 py-0.5 rounded-md shrink-0 font-semibold border border-blue-100">
                 새 질문
               </span>
             </div>
           )}
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-full transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 rounded-full transition-colors cursor-pointer shrink-0"
             aria-label="메뉴 열기"
           >
-            <Menu className="w-6 h-6" />
+            <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
       </div>
@@ -287,7 +293,7 @@ function App() {
       {!activeSessionId ? (
         <ProductSelection onSelect={handleProductSelect} />
       ) : (
-        <div className="w-full max-w-4xl mx-auto flex flex-col space-y-16 px-4 md:px-8">
+        <div className="w-full max-w-4xl mx-auto flex flex-col space-y-8 sm:space-y-12 md:space-y-16 px-3.5 sm:px-6 md:px-8">
           <AnimatePresence>
             {currentFlow.map((item) => (
               <motion.div
@@ -341,14 +347,14 @@ function App() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ duration: 0.3 }}
-            className="fixed bottom-10 right-6 md:bottom-12 md:right-12 z-50"
+            className="fixed bottom-6 right-4 sm:bottom-10 sm:right-6 md:bottom-12 md:right-12 z-50"
           >
             <button
               onClick={scrollToBottom}
-              className="bg-white text-gray-700 p-4 rounded-full shadow-lg border border-gray-100 hover:bg-gray-50 hover:text-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              className="bg-white/95 backdrop-blur-xs text-gray-700 p-2.5 sm:p-3.5 rounded-full shadow-md border border-gray-200/80 hover:bg-gray-50 hover:text-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
               aria-label="맨 아래로 스크롤"
             >
-              <ChevronDown className="w-6 h-6" />
+              <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </motion.div>
         )}

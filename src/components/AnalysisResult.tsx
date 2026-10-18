@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, createContext, useContext, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle, AlertCircle, Clock } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
@@ -11,6 +11,19 @@ import { DynamicFormRenderer } from "./DynamicFormRenderer";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+// 모바일 세로 카드형 표 렌더링을 위한 Context 및 텍스트 추출 유틸
+const TableContext = createContext<{ headers: string[] }>({ headers: [] });
+
+function extractTextFromHast(node: any): string {
+  if (!node) return "";
+  if (typeof node === "string") return node;
+  if (node.value) return node.value;
+  if (Array.isArray(node.children)) {
+    return node.children.map(extractTextFromHast).join("");
+  }
+  return "";
 }
 
 export interface AnalysisResultData {
@@ -342,10 +355,10 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5 }}
-            className="bg-white rounded-[20px] shadow-sm p-6 md:p-10 border border-[#E8EDF5]"
+            className="bg-white rounded-[20px] shadow-sm p-5 sm:p-8 md:p-10 border border-[#E8EDF5]"
           >
-            <div className="flex flex-col items-center justify-center space-y-6 py-8">
-              <div className="w-16 h-16 relative">
+            <div className="flex flex-col items-center justify-center space-y-6 py-6 sm:py-8">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 relative">
                 <div className="w-full h-full border-4 border-[#F5F7FB] rounded-full"></div>
                 <div className="w-full h-full border-4 border-blue-500 rounded-full border-t-transparent animate-spin absolute top-0 left-0"></div>
               </div>
@@ -357,18 +370,16 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                   duration: 1.5,
                   repeatType: "reverse",
                 }}
-                className="text-lg font-bold text-gray-700 text-center"
+                className="text-base sm:text-lg font-bold text-gray-700 text-center break-keep text-balance px-4 leading-relaxed"
               >
-                AI가 약관을 바탕으로
-                <br />
-                사고 내용을 정밀 분석하고 있어요...
+                AI가 약관을 바탕으로 사고 내용을 정밀 분석하고 있어요...
               </motion.p>
             </div>
 
-            <div className="space-y-4 mt-8 animate-pulse">
-              <div className="h-6 bg-[#F5F7FB] rounded-lg w-1/4"></div>
-              <div className="h-20 bg-[#F5F7FB] rounded-xl w-full"></div>
-              <div className="h-12 bg-[#F5F7FB] rounded-xl w-full"></div>
+            <div className="space-y-4 mt-6 sm:mt-8 animate-pulse">
+              <div className="h-6 bg-[#F5F7FB] rounded-lg w-1/3 sm:w-1/4"></div>
+              <div className="h-16 sm:h-20 bg-[#F5F7FB] rounded-xl w-full"></div>
+              <div className="h-10 sm:h-12 bg-[#F5F7FB] rounded-xl w-full"></div>
             </div>
           </motion.div>
         ) : (
@@ -382,13 +393,13 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                 smoothScrollToElement(containerRef);
               }, 50);
             }}
-            className="bg-white rounded-[20px] shadow-sm p-6 md:p-10 space-y-10 border border-[#E8EDF5] overflow-hidden"
+            className="bg-white rounded-[20px] shadow-sm p-4 sm:p-6 md:p-10 space-y-6 sm:space-y-8 md:space-y-10 border border-[#E8EDF5] overflow-hidden"
           >
             <>
               {/* 1. 상단 상태 배너 및 게이지 영역 */}
               <div
                 className={cn(
-                  "flex flex-col md:flex-row items-center md:justify-between p-6 md:p-8 rounded-xl gap-6 border transition-colors duration-500",
+                  "flex items-center justify-between p-3.5 sm:p-6 md:p-8 rounded-2xl gap-3 sm:gap-6 border transition-colors duration-500",
                   parsed.status === "approve" &&
                     "bg-[#EFF4FF] border-[#C2D6FF] text-[#0046FF]",
                   parsed.status === "reject" &&
@@ -399,30 +410,30 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                     "bg-[#F8F9FA] border-[#E8EDF5] text-gray-500",
                 )}
               >
-                <div className="flex items-center gap-4 text-center md:text-left flex-col md:flex-row">
+                <div className="flex items-start sm:items-center gap-2.5 sm:gap-4 flex-1 min-w-0">
                   {parsed.status === "approve" ? (
-                    <div className="w-12 h-12 bg-white/50 text-[#0046FF] rounded-full flex items-center justify-center shadow-inner">
-                      <CheckCircle2 className="w-6 h-6" />
+                    <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white/70 text-[#0046FF] rounded-xl sm:rounded-full flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
+                      <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                   ) : parsed.status === "reject" ? (
-                    <div className="w-12 h-12 bg-white/50 text-red-600 rounded-full flex items-center justify-center shadow-inner">
-                      <XCircle className="w-6 h-6" />
+                    <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white/70 text-red-600 rounded-xl sm:rounded-full flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
+                      <XCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                   ) : parsed.status === "error" ? (
-                    <div className="w-12 h-12 bg-white/50 text-gray-400 rounded-full flex items-center justify-center shadow-inner">
-                      <AlertCircle className="w-6 h-6" />
+                    <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white/70 text-gray-400 rounded-xl sm:rounded-full flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
+                      <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                   ) : (
-                    <div className="w-12 h-12 bg-white/50 text-amber-600 rounded-full flex items-center justify-center shadow-inner">
-                      <AlertCircle className="w-6 h-6 animate-pulse" />
+                    <div className="w-9 h-9 sm:w-12 sm:h-12 bg-white/70 text-amber-600 rounded-xl sm:rounded-full flex items-center justify-center shadow-xs shrink-0 mt-0.5 sm:mt-0">
+                      <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                     </div>
                   )}
 
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-center md:justify-start gap-2">
+                  <div className="space-y-1 sm:space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
                       <span
                         className={cn(
-                          "inline-flex px-2.5 py-0.5 rounded-lg text-xs font-extrabold tracking-tight shadow-sm border",
+                          "inline-flex px-2 py-0.5 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-extrabold tracking-tight shadow-xs border shrink-0",
                           parsed.status === "approve" &&
                             "bg-[#0046FF] text-white border-[#0038CC]",
                           parsed.status === "reject" &&
@@ -442,7 +453,7 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                               : "검토 필요"}
                       </span>
                     </div>
-                    <h2 className="text-xl font-extrabold text-gray-900 leading-snug tracking-tight">
+                    <h2 className="text-[13.5px] sm:text-lg md:text-xl font-extrabold text-gray-900 leading-snug tracking-tight break-keep">
                       {parsed.status === "approve"
                         ? "보험금이 정상적으로 지급 처리됩니다."
                         : parsed.status === "reject"
@@ -454,12 +465,12 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                   </div>
                 </div>
 
-                {/* SVG 확신 게이지 차트 */}
+                {/* SVG 확신 게이지 차트 - 완벽한 정원 보장 및 반응형 스케일 */}
                 {parsed.status !== "error" ? (
-                  <div className="relative flex items-center justify-center flex-shrink-0 w-24 h-24 bg-white rounded-xl shadow-sm border border-[#E8EDF5]">
+                  <div className="relative flex items-center justify-center shrink-0 w-[68px] h-[68px] sm:w-[84px] sm:h-[84px] bg-white rounded-2xl shadow-xs border border-[#E8EDF5]">
                     {(() => {
-                      const strokeWidth = 5;
-                      const radius = 34;
+                      const strokeWidth = 6;
+                      const radius = 32;
                       const circumference = 2 * Math.PI * radius;
                       const percentage = parseInt(parsed.confidence) || 0;
                       const strokeDashoffset =
@@ -467,9 +478,12 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
 
                       return (
                         <>
-                          <svg className="w-20 h-20 transform -rotate-90">
+                          <svg
+                            viewBox="0 0 80 80"
+                            className="w-full h-full p-1 transform -rotate-90"
+                          >
                             <circle
-                              className="text-[#F5F7FB]"
+                              className="text-gray-100"
                               strokeWidth={strokeWidth}
                               stroke="currentColor"
                               fill="transparent"
@@ -494,11 +508,11 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                               cy="40"
                             />
                           </svg>
-                          <div className="absolute flex flex-col items-center justify-center">
-                            <span className="text-[10px] text-gray-400 font-extrabold leading-none tracking-tight">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold leading-none tracking-tight">
                               확신 점수
                             </span>
-                            <span className="text-lg font-black text-gray-900 leading-tight mt-0.5">
+                            <span className="text-sm sm:text-base font-black text-gray-900 leading-tight mt-0.5">
                               {parsed.confidence}
                             </span>
                           </div>
@@ -507,11 +521,11 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                     })()}
                   </div>
                 ) : (
-                  <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-24 h-24 bg-gray-50/80 rounded-xl border border-gray-200/60 text-gray-400">
-                    <span className="text-[10px] font-extrabold leading-none tracking-tight text-gray-400">
+                  <div className="relative flex flex-col items-center justify-center shrink-0 w-[68px] h-[68px] sm:w-[84px] sm:h-[84px] bg-gray-50/80 rounded-2xl border border-gray-200/60 text-gray-400">
+                    <span className="text-[9px] sm:text-[10px] font-extrabold leading-none tracking-tight text-gray-400">
                       확신 점수
                     </span>
-                    <span className="text-xs font-bold leading-tight mt-1.5 text-gray-400">
+                    <span className="text-[11px] sm:text-xs font-bold leading-tight mt-1 text-gray-400">
                       측정 불가
                     </span>
                   </div>
@@ -543,45 +557,45 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                   />
                 </div>
               ) : (
-                <div className="mt-8 markdown-render-area">
+                <div className="mt-6 sm:mt-8 markdown-render-area">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
                       h2: ({ node, ...props }) => (
-                        <div className="flex items-center justify-between border-b border-[#E8EDF5] pb-3 mt-10 mb-4">
+                        <div className="flex items-center justify-between border-b border-[#E8EDF5] pb-2 sm:pb-2.5 mt-6 sm:mt-8 mb-3 sm:mb-4">
                           <h2
-                            className="text-lg font-bold text-gray-900 flex items-center gap-2"
+                            className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2 break-keep text-balance"
                             {...props}
                           >
-                            <span className="w-1 h-5 bg-blue-500 rounded-sm"></span>
+                            <span className="w-1 h-4 sm:h-5 bg-blue-500 rounded-xs shrink-0"></span>
                             {props.children}
                           </h2>
                         </div>
                       ),
                       h3: ({ node, ...props }) => (
                         <h3
-                          className="text-md font-bold text-gray-900 mt-6 mb-3"
+                          className="text-sm sm:text-base font-bold text-gray-900 mt-4 sm:mt-5 mb-2 sm:mb-2.5 break-keep text-balance"
                           {...props}
                         />
                       ),
                       h4: ({ node, ...props }) => (
                         <h4
-                          className="text-[15px] font-bold text-gray-800 mt-5 mb-2 flex items-center gap-2"
+                          className="text-xs sm:text-[14px] font-bold text-gray-800 mt-3 sm:mt-4 mb-1.5 flex items-center gap-2 break-keep"
                           {...props}
                         />
                       ),
                       p: ({ node, ...props }) => (
                         <p
-                          className="text-sm text-gray-700 leading-relaxed font-light break-keep mb-4"
+                          className="text-sm text-gray-700 leading-relaxed font-light break-keep mb-3 sm:mb-4"
                           {...props}
                         />
                       ),
                       ul: ({ node, ...props }) => (
-                        <ul className="space-y-2 mb-6" {...props} />
+                        <ul className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 pl-1 sm:pl-2" {...props} />
                       ),
                       ol: ({ node, ...props }) => (
                         <ol
-                          className="list-decimal pl-5 space-y-2 mb-6 text-sm text-gray-700 leading-relaxed font-light"
+                          className="list-decimal pl-5 space-y-1.5 sm:space-y-2 mb-4 sm:mb-6 text-sm text-gray-700 leading-relaxed font-light"
                           {...props}
                         />
                       ),
@@ -594,7 +608,7 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                               "text-sm text-gray-700 leading-relaxed font-light group transition-colors",
                               isTask
                                 ? "flex items-start gap-2 list-none"
-                                : "list-disc ml-5 break-keep",
+                                : "list-disc ml-4 sm:ml-5 break-keep",
                             )}
                             {...props}
                           />
@@ -613,38 +627,94 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                         }
                         return <input {...props} />;
                       },
-                      table: ({ node, ...props }) => (
-                        <div className="overflow-x-auto -mx-6 md:-mx-10 border-y border-[#E8EDF5] bg-[#F5F7FB]/30 my-6">
-                          <table
-                            className="w-full text-left border-collapse text-xs md:text-sm"
-                            {...props}
-                          />
-                        </div>
-                      ),
+                      table: ({ node, children, ...props }) => {
+                        // HAST AST에서 thead -> tr -> th 텍스트 추출 (모바일 세로형 라벨 바인딩용)
+                        const headers = useMemo(() => {
+                          const anyNode = node as any;
+                          if (!anyNode || !Array.isArray(anyNode.children)) return [];
+                          const thead = anyNode.children.find((c: any) => c?.tagName === "thead");
+                          if (!thead || !Array.isArray(thead.children)) return [];
+                          const headerRow = thead.children.find((c: any) => c?.tagName === "tr");
+                          if (!headerRow || !Array.isArray(headerRow.children)) return [];
+
+                          return headerRow.children
+                            .filter((c: any) => c?.tagName === "th")
+                            .map((th: any) => extractTextFromHast(th).trim());
+                        }, [node]);
+
+                        return (
+                          <TableContext.Provider value={{ headers }}>
+                            <div className="my-4 sm:my-6 md:-mx-10 md:overflow-x-auto md:border-y md:border-[#E8EDF5] md:bg-[#F5F7FB]/30">
+                              <table
+                                className="block md:table w-full text-left border-collapse text-xs md:text-sm"
+                                {...props}
+                              >
+                                {children}
+                              </table>
+                            </div>
+                          </TableContext.Provider>
+                        );
+                      },
                       thead: ({ node, ...props }) => (
                         <thead
-                          className="bg-[#F5F7FB] border-b border-[#E8EDF5]"
+                          className="hidden md:table-header-group bg-[#F5F7FB] border-b border-[#E8EDF5]"
                           {...props}
                         />
                       ),
                       th: ({ node, ...props }) => (
                         <th
-                          className="px-4 py-4 font-bold text-gray-500 whitespace-nowrap"
+                          className="px-4 py-3.5 font-bold text-gray-600 whitespace-nowrap text-xs md:text-sm"
                           {...props}
                         />
                       ),
                       tbody: ({ node, ...props }) => (
                         <tbody
-                          className="divide-y divide-[#E8EDF5]"
+                          className="block md:table-row-group space-y-2.5 md:space-y-0 md:divide-y md:divide-[#E8EDF5]"
                           {...props}
                         />
                       ),
-                      td: ({ node, ...props }) => (
-                        <td
-                          className="px-4 py-4 text-gray-700 align-top leading-relaxed break-keep font-light"
-                          {...props}
-                        />
-                      ),
+                      tr: ({ node, children, ...props }) => {
+                        const childrenArray = React.Children.toArray(children);
+                        return (
+                          <tr
+                            className="block md:table-row bg-[#F8FAFC] md:bg-transparent rounded-xl sm:rounded-2xl border border-[#E8EDF5] md:border-none p-3.5 sm:p-4 md:p-0 shadow-xs md:shadow-none transition-all duration-200"
+                            {...props}
+                          >
+                            {childrenArray.map((child, idx) => {
+                              if (React.isValidElement(child)) {
+                                return React.cloneElement(child as React.ReactElement<any>, {
+                                  colIndex: idx,
+                                });
+                              }
+                              return child;
+                            })}
+                          </tr>
+                        );
+                      },
+                      td: ({ node, colIndex, children, ...props }: any) => {
+                        const { headers } = useContext(TableContext);
+                        const headerTitle =
+                          typeof colIndex === "number" && headers[colIndex]
+                            ? headers[colIndex]
+                            : null;
+
+                        return (
+                          <td
+                            className="block md:table-cell py-1.5 px-0 md:px-4 md:py-4 text-gray-700 align-top leading-relaxed break-keep border-b border-[#E8EDF5]/70 md:border-b-0 last:border-b-0"
+                            {...props}
+                          >
+                            {/* 모바일 화면에서 표가 세로로 바뀔 때 각 행의 컬럼 라벨 헤더 */}
+                            {headerTitle && (
+                              <span className="block md:hidden text-[11px] font-bold text-[#0046FF] uppercase tracking-wider mb-0.5 select-none">
+                                {headerTitle}
+                              </span>
+                            )}
+                            <div className="text-[13.5px] md:text-sm text-gray-800 md:text-gray-700 font-normal md:font-light leading-relaxed break-keep">
+                              {children}
+                            </div>
+                          </td>
+                        );
+                      },
                       strong: ({ node, ...props }) => (
                         <strong
                           className="font-extrabold text-gray-900"
@@ -653,13 +723,13 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                       ),
                       hr: ({ node, ...props }) => (
                         <hr
-                          className="border-t border-[#E8EDF5] my-10"
+                          className="border-t border-[#E8EDF5] my-6 sm:my-10"
                           {...props}
                         />
                       ),
                       blockquote: ({ node, ...props }) => (
                         <blockquote
-                          className="border-l-4 border-blue-500 pl-4 py-1 text-gray-600 bg-blue-50/50 rounded-r-lg my-4 text-sm"
+                          className="border-l-4 border-blue-500 pl-3.5 sm:pl-4 py-2 sm:py-2.5 text-gray-600 bg-blue-50/50 rounded-r-xl my-3 sm:my-4 text-xs sm:text-sm leading-relaxed break-keep"
                           {...props}
                         />
                       ),
@@ -671,7 +741,7 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
               )}
 
               {/* 하단 액션 버튼 */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-100">
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-5 sm:pt-6 border-t border-gray-100">
                 <button
                   onClick={() => {
                     if (flowItemId) {
@@ -683,14 +753,14 @@ ${result.reason || "이전 저장 내역에서 복원된 리포트입니다."}
                       }
                     }
                   }}
-                  className="flex-1 py-4 px-6 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-center text-sm shadow-sm cursor-pointer"
+                  className="flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors text-center text-xs sm:text-sm shadow-xs cursor-pointer break-keep"
                 >
                   내 질문으로 돌아가기
                 </button>
                 {onNextQuestion && (
                   <button
                     onClick={onNextQuestion}
-                    className="flex-1 py-4 px-6 rounded-xl font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors text-center text-sm shadow-sm cursor-pointer"
+                    className="flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-xl font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors text-center text-xs sm:text-sm shadow-xs cursor-pointer break-keep"
                   >
                     새로운 심사 시작하기
                   </button>
